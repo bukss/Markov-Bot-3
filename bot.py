@@ -1,3 +1,4 @@
+from multiprocessing import AuthenticationError
 from markov import  Model
 import socket
 import json
@@ -64,6 +65,9 @@ class Bot:
                 self.logger.info(f"Disconnected by host")
                 time.sleep(1)
                 continue
+            except AuthenticationError:
+                self.logger.error("Authentication failed... shutting down")
+                break
             except Exception as e:
                 self.logger.exception(f"{type(e)}: {str(e)}")
             finally:
@@ -132,6 +136,12 @@ class Bot:
             
         elif message.startswith("RECONNECT"):
             raise ConnectionError("Manually reconnecting")
+
+        elif re.match(r":tmi\.twitch\.tv \d{3} .* :Welcome, GLHF!", message):
+            self.logger.info("Connected successfully")
+
+        elif re.match(r":tmi\.twitch\.tv NOTICE \* :Login authentication failed", message):
+            raise AuthenticationError
 
         else:
             self.logger.debug(f"Received miscellaneous signal: {message}")
