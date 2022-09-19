@@ -22,11 +22,12 @@ class Bot:
         self.chat_counter = 0
         self.send_timer = time.time()
         self.reset_timer = time.time()
+        self.reconnect_timer = time.time()
 
     def connect(self):
         self.logger.info("Connecting...")
         self.sock = socket.socket()
-        self.sock.settimeout(None)
+        self.sock.settimeout(1)
         self.sock.connect((self.host, self.port))
         self._send_raw("CAP REQ :twitch.tv/commands")
         self._send_raw(f"PASS {self.oauth}")
@@ -77,9 +78,13 @@ class Bot:
         while 1:
             message = self.get_messages()
             if message:
+                self.reconnect_timer = time.time()
                 for msg in message.splitlines():
                     self.handle_message(msg)
 
+            elif time.time() - self.reconnect_timer > self.reconnect:
+                raise ConnectionError
+                 
             if time.time() - self.reset_timer >= self.reset:
                 self.reset_model()
 
@@ -100,7 +105,6 @@ class Bot:
                 print(repr(self.model))
             else:
                 self.process_chat(chat, "buksss", "buksss")
-
 
 
     def handle_message(self, message):
@@ -344,6 +348,7 @@ class Bot:
         self.minlength = config["minlength"]
         self.maxlength = config["maxlength"]
         self.maxchars = config["maxchars"]
+        self.reconnect = config["reconnect"]
 
     def set_blacklist(self):
         self.logger.info("Setting blacklist")
